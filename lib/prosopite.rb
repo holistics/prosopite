@@ -249,7 +249,7 @@ module Prosopite
       end
 
       if @custom_logging_methods
-        @custom_logging_methods.call(n_plus_one_error, tc[:prosopite_scan_options])
+        @custom_logging_methods.call(n_plus_one_errors, tc[:prosopite_scan_options])
         return
       end
       default_send_notifications
