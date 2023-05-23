@@ -236,12 +236,12 @@ module Prosopite
       raise NPlusOneQueriesError.new(notifications_str) if @raise
     end
 
-    def send_notifications()
+    def send_notifications
       n_plus_one_errors = []
       tc[:prosopite_notifications].each do |queries, kaller|
         kaller = backtrace_cleaner.clean(kaller)
         duration = tc[:prosopite_queries_duration][queries]
-        n_plus_1_info << {
+        n_plus_one_errors << {
           queries: queries,
           stacktrace: kaller,
           time: duration,
