@@ -31,7 +31,7 @@ module Prosopite
       @backtrace_cleaner ||= Rails.backtrace_cleaner
     end
 
-    def scan(options)
+    def scan(options=nil)
       tc[:prosopite_scan] ||= false
       return if scan?
 
