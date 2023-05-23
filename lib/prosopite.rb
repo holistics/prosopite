@@ -16,7 +16,9 @@ module Prosopite
                 :ignore_queries,
                 :ignore_pauses,
                 :min_n_queries,
-                :backtrace_cleaner
+                :backtrace_cleaner,
+                :allow_list
+
 
     def allow_list=(value)
       puts "Prosopite.allow_list= is deprecated. Use Prosopite.allow_stack_paths= instead."
@@ -28,7 +30,7 @@ module Prosopite
       @backtrace_cleaner ||= Rails.backtrace_cleaner
     end
 
-    def scan
+    def scan(optional_options={})
       tc[:prosopite_scan] ||= false
       return if scan?
 
@@ -37,6 +39,8 @@ module Prosopite
       tc[:prosopite_query_counter] = Hash.new(0)
       tc[:prosopite_query_holder] = Hash.new { |h, k| h[k] = [] }
       tc[:prosopite_query_caller] = {}
+      tc[:prosopite_query_sum_duration] = Hash.new(0.0)
+      tc[:prosopite_optional_options] = optional_options
 
       @allow_stack_paths ||= []
       @ignore_pauses ||= false
@@ -97,10 +101,13 @@ module Prosopite
       tc[:prosopite_query_counter] = nil
       tc[:prosopite_query_holder] = nil
       tc[:prosopite_query_caller] = nil
+      tc[:prosopite_query_sum_duration] = nil
+      tc[:prosopite_optional_options] = nil
     end
 
     def create_notifications
       tc[:prosopite_notifications] = {}
+      tc[:prosopite_queries_duration] = {}
 
       tc[:prosopite_query_counter].each do |location_key, count|
         if count >= @min_n_queries
@@ -123,6 +130,7 @@ module Prosopite
           unless is_allowed
             queries.each do |q|
               tc[:prosopite_notifications][q] = kaller
+              tc[:prosopite_queries_duration][q] = tc[:prosopite_query_sum_duration][location_key]
             end
           end
         end
@@ -190,7 +198,7 @@ module Prosopite
       query
     end
 
-    def send_notifications
+    def default_notifications
       @custom_logger ||= false
       @rails_logger ||= false
       @stderr_logger ||= false
@@ -227,6 +235,15 @@ module Prosopite
       raise NPlusOneQueriesError.new(notifications_str) if @raise
     end
 
+    def send_notifications()
+      if block_given?
+        yield
+        return
+      end
+      default_notifications
+
+    end
+
     def red(str)
       str.split("\n").map { |line| "\e[91m#{line}\e[0m" }.join("\n")
     end
@@ -240,22 +257,28 @@ module Prosopite
       @subscribed ||= false
       return if @subscribed
 
-      ActiveSupport::Notifications.subscribe 'sql.active_record' do |_, _, _, _, data|
-        sql, name = data[:sql], data[:name]
-
-        if scan? && name != "SCHEMA" && sql.include?('SELECT') && data[:cached].nil? && !ignore_query?(sql)
-          location_key = Digest::SHA1.hexdigest(caller.join)
-
-          tc[:prosopite_query_counter][location_key] += 1
-          tc[:prosopite_query_holder][location_key] << sql
-
-          if tc[:prosopite_query_counter][location_key] > 1
-            tc[:prosopite_query_caller][location_key] = caller.dup
-          end
-        end
+      ActiveSupport::Notifications.subscribe 'sql.active_record' do |event_name, started, finished, unique_id, data|
+        process_query(event_name, started, finished, unique_id, data)
       end
 
       @subscribed = true
+    end
+
+    def process_query(event_name, started, finished, unique_id, data)
+      sql = data[:sql]
+      name = data[:name]
+      if scan? && name != 'SCHEMA' && sql.include?('SELECT') && data[:cached].nil? && !ignore_query?(sql)
+        location_key = Digest::SHA1.hexdigest(caller.join)
+
+        tc[:prosopite_query_counter][location_key] += 1
+        tc[:prosopite_query_holder][location_key] << sql
+
+        event = ActiveSupport::Notifications::Event.new(event_name, started, finished, unique_id, data)
+        time = event.duration
+        tc[:prosopite_query_sum_duration][location_key] += time
+
+        tc[:prosopite_query_caller][location_key] = caller.dup if tc[:prosopite_query_counter][location_key] > 1
+      end
     end
   end
 end

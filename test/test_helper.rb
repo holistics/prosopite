@@ -23,15 +23,23 @@ ActiveRecord::Schema.define do
   create_table "chairs", force: true do |t|
     t.string "name"
   end
+  create_table "cushions", force: true do |t|
+    t.integer "chair_id"
+  end
 end
 
 class Leg < ActiveRecord::Base
-  belongs_to :chair
+  belongs_to :chair, foreign_key: "chair_id"
+end
+
+class Cushion < ActiveRecord::Base
+  belongs_to :chair, foreign_key: 'chair_id'
 end
 
 class Chair < ActiveRecord::Base
   has_many :legs
   has_many :feet, class_name: 'Leg'
+  has_many :curshion
 
   validates_uniqueness_of :name
 end
@@ -49,5 +57,9 @@ FactoryBot.define do
     sequence :name do |n|
       "name#{n}"
     end
+  end
+
+  factory :cushion do
+    chair
   end
 end

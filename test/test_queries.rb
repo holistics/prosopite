@@ -109,6 +109,24 @@ class TestQueries < Minitest::Test
     assert_n_plus_one
   end
 
+  def test_association_plus_one
+    # 20 chairs, 4 legs and 4 cushions each
+    chairs = create_list(:chair, 20)
+    list = []
+    chairs.each { |c|
+      list += create_list(:cushion, 4, chair_id: c.id)
+      list += create_list(:leg, 4, chair_id: c.id) 
+    }
+
+    Prosopite.scan
+
+    preloader = ActiveRecord::Associations::Preloader.new
+    preloader.preload(list, :chair)
+
+
+    assert_n_plus_one
+  end
+
   def test_scan_with_block
     # 20 chairs, 4 legs each
     chairs = create_list(:chair, 20)
@@ -398,6 +416,7 @@ class TestQueries < Minitest::Test
   ensure
     Prosopite.min_n_queries = 2
   end
+
 
   private
   def assert_n_plus_one
