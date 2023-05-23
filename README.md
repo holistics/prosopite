@@ -294,9 +294,13 @@ and don't want to run Prosopite on background job code, just foreground app code
 
 ## Pass additional information in each scan
 
-You can pass additional information in each scan such as ControllerName, ServiceName,...
+You can pass additional information in each scan such as ControllerName, ServiceName,... and access this information in custom logging method
 
 ```ruby
+Prosopite.custom_send_notifications_methods = Proc.new do | n_plus_one_errors, scan_options |
+  puts "N+1 in controller #{scan_options[:controllerName]}"
+end
+
 Prosopite.scan({controllerName: 'ApplicationController'}) do
 # <code to scan>
 end
