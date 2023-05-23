@@ -18,7 +18,7 @@ module Prosopite
                 :min_n_queries,
                 :backtrace_cleaner,
                 :allow_list,
-                :notification_method
+                :custom_logging_methods
 
 
     def allow_list=(value)
@@ -31,7 +31,7 @@ module Prosopite
       @backtrace_cleaner ||= Rails.backtrace_cleaner
     end
 
-    def scan(optional_options={})
+    def scan(options)
       tc[:prosopite_scan] ||= false
       return if scan?
 
@@ -41,7 +41,7 @@ module Prosopite
       tc[:prosopite_query_holder] = Hash.new { |h, k| h[k] = [] }
       tc[:prosopite_query_caller] = {}
       tc[:prosopite_query_sum_duration] = Hash.new(0.0)
-      tc[:prosopite_optional_options] = optional_options
+      tc[:prosopite_scan_options] = options
 
       @allow_stack_paths ||= []
       @ignore_pauses ||= false
@@ -103,7 +103,7 @@ module Prosopite
       tc[:prosopite_query_holder] = nil
       tc[:prosopite_query_caller] = nil
       tc[:prosopite_query_sum_duration] = nil
-      tc[:prosopite_optional_options] = nil
+      tc[:prosopite_scan_options] = nil
     end
 
     def create_notifications
@@ -199,7 +199,7 @@ module Prosopite
       query
     end
 
-    def default_notifications
+    def default_send_notifications
       @custom_logger ||= false
       @rails_logger ||= false
       @stderr_logger ||= false
@@ -237,12 +237,22 @@ module Prosopite
     end
 
     def send_notifications()
-      if @notification_method
-        @notification_method.call(tc)
+      n_plus_one_errors = []
+      tc[:prosopite_notifications].each do |queries, kaller|
+        kaller = backtrace_cleaner.clean(kaller)
+        duration = tc[:prosopite_queries_duration][queries]
+        n_plus_1_info << {
+          queries: queries,
+          stacktrace: kaller,
+          time: duration,
+        }
+      end
+
+      if @custom_logging_methods
+        @custom_logging_methods.call(n_plus_one_error, tc[:prosopite_scan_options])
         return
       end
-      default_notifications
-
+      default_send_notifications
     end
 
     def red(str)
