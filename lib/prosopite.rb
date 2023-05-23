@@ -237,8 +237,8 @@ module Prosopite
     end
 
     def send_notifications()
-      if notification_method
-        notification_method.call(tc)
+      if @notification_method
+        @notification_method.call(tc)
         return
       end
       default_notifications
