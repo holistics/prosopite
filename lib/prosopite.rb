@@ -17,7 +17,8 @@ module Prosopite
                 :ignore_pauses,
                 :min_n_queries,
                 :backtrace_cleaner,
-                :allow_list
+                :allow_list,
+                :notification_method
 
 
     def allow_list=(value)
@@ -236,8 +237,8 @@ module Prosopite
     end
 
     def send_notifications()
-      if block_given?
-        yield
+      if notification_method
+        notification_method.call(tc)
         return
       end
       default_notifications
