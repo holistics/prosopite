@@ -146,6 +146,22 @@ Prosopite.custom_logger = MyLoggerClass.new
 
 ```
 
+### Custom Logging method
+You can supply a custom logging method with the `Prosopite.custom_logging_methods` setting.
+
+This is useful when you want to control the entire Prosopite logging method such as define logging format, where to log it, ....
+
+```ruby
+
+Prosopite.custom_send_notifications_methods = Proc.new do | n_plus_one_errors, scan_options |
+  n_plus_one_errors.each do |error|
+    puts "#{error.queries} #{error.stacktrace} #{error.time}"
+  end
+end
+
+```
+
+
 ## Development Environment Usage
 
 Prosopite auto-detection can be enabled on all controllers:
@@ -275,6 +291,18 @@ Pauses can be ignored with `Prosopite.ignore_pauses = true` in case you want to 
 
 An example of when you might use this is if you are [testing Active Jobs inline](https://guides.rubyonrails.org/testing.html#testing-jobs),
 and don't want to run Prosopite on background job code, just foreground app code. In that case you could write an [Active Job callback](https://edgeguides.rubyonrails.org/active_job_basics.html#callbacks) that pauses the scan while the job is running.
+
+## Pass additional information in each scan
+
+You can pass additional information in each scan such as ControllerName, ServiceName,...
+
+```ruby
+Prosopite.scan({controllerName: 'ApplicationController'}) do
+# <code to scan>
+end
+
+Prosopite.finish
+```
 
 ## Contributing
 
