@@ -18,7 +18,7 @@ module Prosopite
                 :min_n_queries,
                 :backtrace_cleaner,
                 :allow_list,
-                :custom_logging_methods
+                :custom_notifier
 
 
     def allow_list=(value)
@@ -31,7 +31,7 @@ module Prosopite
       @backtrace_cleaner ||= Rails.backtrace_cleaner
     end
 
-    def scan(options=nil)
+    def scan(context=nil)
       tc[:prosopite_scan] ||= false
       return if scan?
 
@@ -41,7 +41,7 @@ module Prosopite
       tc[:prosopite_query_holder] = Hash.new { |h, k| h[k] = [] }
       tc[:prosopite_query_caller] = {}
       tc[:prosopite_query_sum_duration] = Hash.new(0.0)
-      tc[:prosopite_scan_options] = options
+      tc[:prosopite_scan_context] = context
 
       @allow_stack_paths ||= []
       @ignore_pauses ||= false
@@ -103,7 +103,7 @@ module Prosopite
       tc[:prosopite_query_holder] = nil
       tc[:prosopite_query_caller] = nil
       tc[:prosopite_query_sum_duration] = nil
-      tc[:prosopite_scan_options] = nil
+      tc[:prosopite_scan_context] = nil
     end
 
     def create_notifications
@@ -199,7 +199,7 @@ module Prosopite
       query
     end
 
-    def default_send_notifications
+    def default_notifier
       @custom_logger ||= false
       @rails_logger ||= false
       @stderr_logger ||= false
@@ -248,11 +248,11 @@ module Prosopite
         }
       end
 
-      if @custom_logging_methods
-        @custom_logging_methods.call(n_plus_one_errors, tc[:prosopite_scan_options])
-        return
+      if @custom_notifier
+        @custom_notifier.call(n_plus_one_errors, tc[:prosopite_scan_context])
+      else
+        default_notifier
       end
-      default_send_notifications
     end
 
     def red(str)
@@ -284,8 +284,9 @@ module Prosopite
         tc[:prosopite_query_counter][location_key] += 1
         tc[:prosopite_query_holder][location_key] << sql
 
-        event = ActiveSupport::Notifications::Event.new(event_name, started, finished, unique_id, data)
-        time = event.duration
+        # we can use ActiveSupport::Notifications::Event#duration to achive the same thing
+        # but we want to avoid overhead of creating new object so the below option is choosen
+        time = finished - started
         tc[:prosopite_query_sum_duration][location_key] += time
 
         tc[:prosopite_query_caller][location_key] = caller.dup if tc[:prosopite_query_counter][location_key] > 1
