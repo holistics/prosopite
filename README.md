@@ -146,16 +146,31 @@ Prosopite.custom_logger = MyLoggerClass.new
 
 ```
 
-### Custom Logging method
-You can supply a custom logging method with the `Prosopite.custom_logging_methods` setting.
+### Custom notifier
+You can supply a custom notifier method with the `Prosopite.custom_notifier` setting.
 
-This is useful when you want to control the entire Prosopite logging method such as define logging format, where to log it, ....
+This is useful when you want to control the entire Prosopite send notification method such as define logging format, where to log it, ....
 
 ```ruby
 
-Prosopite.custom_send_notifications_methods = Proc.new do | n_plus_one_errors, scan_options |
+Prosopite.custom_notifier = Proc.new do | n_plus_one_errors, scan_context |
   n_plus_one_errors.each do |error|
     puts "#{error.queries} #{error.stacktrace} #{error.time}"
+  end
+end
+
+```
+
+Note that if you are using this custom notifier, the options `raise`, `rails_logger`, `prosopite_logger` and `stderr_logger` will be ignored.
+
+If you want to enable the above options, add `Prosopite.default_notifier` in your `Prosopite.custom_notifier`
+
+```ruby
+Prosopite.custom_notifier = Proc.new do | n_plus_one_errors, scan_context |
+  n_plus_one_errors.each do |error|
+    puts "#{error.queries} #{error.stacktrace} #{error.time}"
+    # this will enable again all the logger options
+    Prosopite.default_notifier
   end
 end
 
@@ -297,8 +312,8 @@ and don't want to run Prosopite on background job code, just foreground app code
 You can pass additional information in each scan such as ControllerName, ServiceName,... and access this information in custom logging method
 
 ```ruby
-Prosopite.custom_send_notifications_methods = Proc.new do | n_plus_one_errors, scan_options |
-  puts "N+1 in controller #{scan_options[:controllerName]}"
+Prosopite.custom_send_notifications_methods = Proc.new do | n_plus_one_errors, scan_context |
+  puts "N+1 in controller #{scan_context[:controllerName]}"
 end
 
 Prosopite.scan({controllerName: 'ApplicationController'}) do
