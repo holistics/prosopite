@@ -8,6 +8,7 @@ class TestQueries < Minitest::Test
   def teardown
     Prosopite.allow_stack_paths = nil
     Prosopite.ignore_queries = nil
+    Prosopite.custom_notifier = nil
   end
 
   def test_first_in_has_many_loop
@@ -417,6 +418,30 @@ class TestQueries < Minitest::Test
     Prosopite.min_n_queries = 2
   end
 
+  def test_custom_notifier
+    Prosopite.custom_notifier = proc { |errors|
+      assert errors.length == 1
+    }
+    Prosopite.scan
+    Chair.last(4).each do |c|
+      c.legs.last
+    end
+
+    assert_no_n_plus_ones
+  end
+
+  def test_scan_context
+    Prosopite.custom_notifier = proc { |_, scan_context|
+      assert scan_context[:name] == 'abc'
+    }
+    Prosopite.scan({name: 'abc'})
+    Chair.last(4).each do |c|
+      c.legs.last
+    end
+
+    assert_no_n_plus_ones
+
+  end
 
   private
   def assert_n_plus_one
