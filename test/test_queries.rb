@@ -3,6 +3,7 @@ require 'test_helper'
 class TestQueries < Minitest::Test
   def setup
     Prosopite.raise = true
+    Prosopite.backtrace_cleaner = ActiveSupport::BacktraceCleaner.new
   end
 
   def teardown
@@ -421,6 +422,11 @@ class TestQueries < Minitest::Test
   def test_custom_notifier
     Prosopite.custom_notifier = proc { |errors|
       assert errors.length == 1
+      assert errors.first[:queries].length == 4
+      assert errors.first[:queries].first.include?('SELECT "legs".* FROM "legs"')
+      traces_include_this_file_path = errors.first[:stacktrace].select{|trace| trace.include?(__FILE__)}
+      assert traces_include_this_file_path.length > 0
+      assert errors.first[:time] > 0
     }
     Prosopite.scan
     Chair.last(4).each do |c|
