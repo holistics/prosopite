@@ -220,6 +220,9 @@ module Prosopite
         end
 
         notifications_str << "\n"
+
+        duration = tc[:prosopite_queries_duration][queries]
+        notifications_str << "Duration:\n#{duration * 1000} ms\n"
       end
 
       @custom_logger.warn(notifications_str) if @custom_logger
